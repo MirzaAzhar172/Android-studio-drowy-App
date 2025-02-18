@@ -1,0 +1,219 @@
+//Buat new flutter flow project name:camfrontback app.
+// Pergi file pubspec.yaml, paste kod ni:
+# 1. PERTAMA: Edit pubspec.yaml
+# Tambah dependencies ini dalam pubspec.yaml
+name: camfrontbackapp
+description: Camera app with front and back camera
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.10.5+9  # Package untuk control camera
+  permission_handler: ^11.2.1  # Package untuk handle permissions
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+//buat file camera_screen.dart di file lib, lepastu paste ni:
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+class CameraScreen extends StatefulWidget {
+  final List<CameraDescription> cameras;
+
+  // Update constructor untuk terima cameras
+  const CameraScreen({
+    super.key,
+    required this.cameras,
+  });
+
+  @override
+  State<CameraScreen> createState() => _CameraScreenState();
+}
+
+class _CameraScreenState extends State<CameraScreen> {
+  late CameraController _controller;
+  bool _isCameraInitialized = false;
+  bool _isFrontCamera = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    final status = await Permission.camera.request();
+
+    if (status.isGranted) {
+      // Guna widget.cameras instead of cameras
+      _controller = CameraController(
+        widget.cameras[_isFrontCamera ? 1 : 0],
+        ResolutionPreset.high,
+      );
+
+      try {
+        await _controller.initialize();
+
+        if (mounted) {
+          setState(() {
+            _isCameraInitialized = true;
+          });
+        }
+      } catch (e) {
+        print("Error initializing camera: $e");
+      }
+    }
+  }
+
+  void _switchCamera() {
+    setState(() {
+      _isFrontCamera = !_isFrontCamera;
+      _isCameraInitialized = false;
+    });
+    _controller.dispose();
+    _initCamera();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isCameraInitialized) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Camera App'),
+        backgroundColor: Colors.black,
+      ),
+      body: Stack(
+        children: [
+          CameraPreview(_controller),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _switchCamera,
+              backgroundColor: Colors.white,
+              child: const Icon(
+                Icons.flip_camera_ios,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+//Bukak lib/main.dart, paste coding ni:
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'camera_screen.dart';
+
+List<CameraDescription> cameras = [];
+
+Future<void> main() async {
+// Pastikan Flutter initialization complete
+WidgetsFlutterBinding.ensureInitialized();
+
+// Dapatkan senarai cameras
+try {
+cameras = await availableCameras();
+} catch (e) {
+print("Error getting cameras: $e");
+}
+
+runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+const MyApp({super.key});
+
+@override
+Widget build(BuildContext context) {
+return MaterialApp(
+title: 'Camera App',
+theme: ThemeData(
+primarySwatch: Colors.blue,
+),
+// Pass cameras list ke CameraScreen
+home: CameraScreen(cameras: cameras),
+);
+}
+}
+
+//Bukak file AndroidManifest.xml (android/app/src/main/AndroidManifest.xml), lepastu paste kod ni:
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.camfrontbackapp">
+
+    <!-- Camera & Storage Permissions -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+    <!-- Camera Hardware Features -->
+    <uses-feature android:name="android.hardware.camera"/>
+    <uses-feature android:name="android.hardware.camera.autofocus"/>
+
+    <application
+        android:label="camfrontbackapp"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"
+                />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>
+
+// Dah settle, pergi terminal.
+// run flutter clean.
+// run flutter pub get.
+// run "flutter run" atau tekan ikon hijau (pastikan run dalam virtual device (API 33 PIXEL3 and above)).
+
